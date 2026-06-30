@@ -7,7 +7,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from pymatgen.core.spectrum import Spectrum
 from pymatgen.util.plotting import add_fig_kwargs, pretty_plot
@@ -214,26 +213,12 @@ def get_unique_families(hkls):
     Returns:
         {hkl: multiplicity}: A dict with unique hkl and multiplicity.
     """
-
-    # TODO can definitely be sped up
-    def is_perm(hkl1, hkl2) -> bool:
-        h1 = np.abs(hkl1)
-        h2 = np.abs(hkl2)
-        return np.all(np.sort(h1) == np.sort(h2))
-
+    # Two Miller indices belong to the same family iff they are permutations of
+    # each other (up to sign), i.e. share the same sorted absolute indices.
+    # Grouping by that canonical key is O(n) instead of the O(n^2) pairwise
+    # comparison.
     unique = defaultdict(list)
-    for hkl1 in hkls:
-        found = False
-        for hkl2, v2 in unique.items():
-            if is_perm(hkl1, hkl2):
-                found = True
-                v2.append(hkl1)
-                break
-        if not found:
-            unique[hkl1].append(hkl1)
+    for hkl in hkls:
+        unique[tuple(sorted(abs(idx) for idx in hkl))].append(hkl)
 
-    pretty_unique = {}
-    for val in unique.values():
-        pretty_unique[max(val)] = len(val)
-
-    return pretty_unique
+    return {max(val): len(val) for val in unique.values()}
